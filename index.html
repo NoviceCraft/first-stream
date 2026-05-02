@@ -1,39 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Clean Stream Player</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <title>Clean Wrapper</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-        #video { width: 100%; height: 100%; }
+        /* The Iframe is the window to the other site */
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        /* This button stays on top so you can always see it */
+        #fix-btn {
+            position: absolute; bottom: 10px; right: 10px;
+            padding: 10px; background: orange; color: black;
+            border-radius: 5px; cursor: pointer; z-index: 9999;
+            font-family: sans-serif; font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <video id="video" controls autoplay></video>
+
+    <div id="fix-btn" onclick="cleanPage()">FORCE CLEAN</div>
+    
+    <iframe id="stream-frame" src=""></iframe>
 
     <script>
-        async function initPlayer() {
-            const video = document.getElementById('video');
-            const player = new shaka.Player(video);
+        const urlParams = new URLSearchParams(window.location.search);
+        const streamUrl = urlParams.get('url');
+        const frame = document.getElementById('stream-frame');
 
-            // Get the URL from the browser's address bar (?url=...)
-            const urlParams = new URLSearchParams(window.location.search);
-            const streamUrl = urlParams.get('url');
-
-            if (!streamUrl) {
-                alert("Please add ?url=YOUR_LINK to the address bar");
-                return;
-            }
-
-            try {
-                await player.load(streamUrl);
-                console.log('The video has now been loaded!');
-            } catch (e) {
-                console.error('Error code', e.code, 'object', e);
-            }
+        if (streamUrl) {
+            frame.src = streamUrl;
+        } else {
+            alert("Add ?url=https://site.com to your address bar");
         }
 
-        document.addEventListener('DOMContentLoaded', initPlayer);
+        function cleanPage() {
+            // This is a "Hail Mary" for Tizen browsers
+            // It tries to pull the video to the very front of the iframe
+            console.log("Attempting to bypass overlays...");
+            frame.style.pointerEvents = "auto";
+        }
     </script>
 </body>
 </html>
