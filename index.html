@@ -2,57 +2,81 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jio Star 1 Live</title>
-    <!-- The engine that runs the video -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <!-- Shaka Player UI Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/controls.min.css">
+    <!-- Shaka Player Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.ui.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; color: lime; font-family: sans-serif; }
-        #video { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        #overlay { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; pointer-events: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+        #video-container { width: 100%; height: 100%; }
+        video { width: 100%; height: 100%; }
+        #status-overlay {
+            position: absolute; top: 10px; left: 10px; z-index: 100;
+            color: lime; background: rgba(0,0,0,0.8); padding: 10px;
+            font-family: monospace; pointer-events: none; border: 1px solid lime;
+        }
     </style>
 </head>
 <body>
 
-    <div id="overlay">Status: Initializing...</div>
-    <video id="video" controls autoplay></video>
+    <div id="status-overlay">Initializing...</div>
+    
+    <div id="video-container" data-shaka-player-container>
+        <video autoplay id="video" data-shaka-player crossorigin="anonymous"></video>
+    </div>
 
     <script>
-        const status = document.getElementById('overlay');
-
-        async function startStream() {
+        async function initApp() {
             const video = document.getElementById('video');
+            const videoContainer = document.getElementById('video-container');
+            const status = document.getElementById('status-overlay');
+            
+            // Initialize the Player
             const player = new shaka.Player(video);
+            const ui = new shaka.ui.Overlay(player, videoContainer, video);
 
-            // Configure the DRM keys you found
+            // 1. DRM Configuration using your keys
             player.configure({
                 drm: {
                     clearKeys: {
                         '965dc2ddb1d85138ad787999a7f30ca5': '859695076e67fe961836b564db6d689c'
                     }
+                },
+                streaming: {
+                    rebufferingGoal: 15,
+                    bufferingGoal: 30
                 }
             });
 
-            // The Jio TV Manifest URL
-            const manifest = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd";
+            // 2. Request Filter to bypass 403 Forbidden
+            player.getNetworkingEngine().registerRequestFilter(function(type, request) {
+                // Force legitimate headers
+                request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+                request.headers['Origin'] = 'https://allrounder-live5.pages.dev';
+                request.headers['Referer'] = 'https://allrounder-live5.pages.dev/';
+            });
+
+            // 3. The Stream URL (Using a Proxy to beat the 403 bouncer)
+            const rawUrl = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd";
+            const proxiedUrl = "https://corsproxy.io/?url=" + encodeURIComponent(rawUrl);
 
             try {
-                status.innerText = "Connecting to Jio CDN...";
-                await player.load(manifest);
-                status.innerText = "Streaming Active";
+                status.innerText = "Connecting to Jio via Proxy...";
+                await player.load(proxiedUrl);
+                status.innerText = "Success: Playing Stream";
                 setTimeout(() => { status.style.display = 'none'; }, 5000);
-            } catch (error) {
-                status.innerText = "Error: " + error.code;
-                console.error("Shaka Error:", error);
+            } catch (e) {
+                status.innerText = "Error: " + e.code + " - Jio is blocking the request.";
+                console.error("Error code", e.code, e);
             }
         }
 
-        // Run when page is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            if (shaka.Player.isBrowserSupported()) {
-                startStream();
-            } else {
-                status.innerText = "Error: Browser not supported";
-            }
+        // Install polyfills and launch
+        document.addEventListener('shaka-ui-loaded', () => {
+            shaka.polyfill.installAll();
+            initApp();
         });
     </script>
 </body>
