@@ -1,27 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Stream Pro</title>
+    <meta charset="UTF-8">
+    <title>Jio Star 1 Live</title>
+    <!-- The engine that runs the video -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: white; overflow: hidden; }
-        #video { width: 100%; height: 100%; }
-        #status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace; z-index: 100; pointer-events: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; color: lime; font-family: sans-serif; }
+        #video { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        #overlay { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div id="status">Status: Loading Shaka...</div>
+    <div id="overlay">Status: Initializing...</div>
     <video id="video" controls autoplay></video>
 
     <script>
-        const status = document.getElementById('status');
-        
-        async function initPlayer() {
+        const status = document.getElementById('overlay');
+
+        async function startStream() {
             const video = document.getElementById('video');
             const player = new shaka.Player(video);
 
-            // 1. Configure the Keys
+            // Configure the DRM keys you found
             player.configure({
                 drm: {
                     clearKeys: {
@@ -30,30 +32,26 @@
                 }
             });
 
-            // 2. Add the Headers (Crucial for Jio)
-            player.getNetworkingEngine().registerRequestFilter(function(type, request) {
-                request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-            });
-
-            const url = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd";
+            // The Jio TV Manifest URL
+            const manifest = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd";
 
             try {
-                status.innerText = "Status: Connecting to Jio...";
-                await player.load(url);
-                status.innerText = "Status: Playing!";
-                // Hide status after 5 seconds of success
-                setTimeout(() => status.style.display = 'none', 5000);
-            } catch (e) {
-                status.innerText = "Error: " + e.code + " (Check Keys or Jio Block)";
-                console.error(e);
+                status.innerText = "Connecting to Jio CDN...";
+                await player.load(manifest);
+                status.innerText = "Streaming Active";
+                setTimeout(() => { status.style.display = 'none'; }, 5000);
+            } catch (error) {
+                status.innerText = "Error: " + error.code;
+                console.error("Shaka Error:", error);
             }
         }
 
+        // Run when page is ready
         document.addEventListener('DOMContentLoaded', () => {
             if (shaka.Player.isBrowserSupported()) {
-                initPlayer();
+                startStream();
             } else {
-                status.innerText = "Error: Browser Not Supported";
+                status.innerText = "Error: Browser not supported";
             }
         });
     </script>
