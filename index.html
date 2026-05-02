@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clean Stream Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+        #video { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <video id="video" controls autoplay></video>
+
+    <script>
+        async function initPlayer() {
+            const video = document.getElementById('video');
+            const player = new shaka.Player(video);
+
+            // Get the URL from the browser's address bar (?url=...)
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamUrl = urlParams.get('url');
+
+            if (!streamUrl) {
+                alert("Please add ?url=YOUR_LINK to the address bar");
+                return;
+            }
+
+            try {
+                await player.load(streamUrl);
+                console.log('The video has now been loaded!');
+            } catch (e) {
+                console.error('Error code', e.code, 'object', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPlayer);
+    </script>
+</body>
+</html>
