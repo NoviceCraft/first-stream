@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jio Star 1 Live</title>
-    <!-- Shaka Player UI Styles -->
+    <title>Jio Star 1 Final Fix</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/controls.min.css">
-    <!-- Shaka Player Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.ui.min.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
@@ -14,14 +12,14 @@
         video { width: 100%; height: 100%; }
         #status-overlay {
             position: absolute; top: 10px; left: 10px; z-index: 100;
-            color: lime; background: rgba(0,0,0,0.8); padding: 10px;
-            font-family: monospace; pointer-events: none; border: 1px solid lime;
+            color: #00ff00; background: rgba(0,0,0,0.8); padding: 10px;
+            font-family: monospace; border: 1px solid #00ff00;
         }
     </style>
 </head>
 <body>
 
-    <div id="status-overlay">Initializing...</div>
+    <div id="status-overlay">Initializing System...</div>
     
     <div id="video-container" data-shaka-player-container>
         <video autoplay id="video" data-shaka-player crossorigin="anonymous"></video>
@@ -33,47 +31,53 @@
             const videoContainer = document.getElementById('video-container');
             const status = document.getElementById('status-overlay');
             
-            // Initialize the Player
             const player = new shaka.Player(video);
             const ui = new shaka.ui.Overlay(player, videoContainer, video);
 
-            // 1. DRM Configuration using your keys
+            // DRM Keys
             player.configure({
                 drm: {
                     clearKeys: {
                         '965dc2ddb1d85138ad787999a7f30ca5': '859695076e67fe961836b564db6d689c'
                     }
-                },
-                streaming: {
-                    rebufferingGoal: 15,
-                    bufferingGoal: 30
                 }
             });
 
-            // 2. Request Filter to bypass 403 Forbidden
+            // Network Filters for Jio
             player.getNetworkingEngine().registerRequestFilter(function(type, request) {
-                // Force legitimate headers
                 request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
                 request.headers['Origin'] = 'https://allrounder-live5.pages.dev';
                 request.headers['Referer'] = 'https://allrounder-live5.pages.dev/';
             });
 
-            // 3. The Stream URL (Using a Proxy to beat the 403 bouncer)
+            // Proxy URL
             const rawUrl = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd";
             const proxiedUrl = "https://corsproxy.io/?url=" + encodeURIComponent(rawUrl);
 
             try {
-                status.innerText = "Connecting to Jio via Proxy...";
-                await player.load(proxiedUrl);
-                status.innerText = "Success: Playing Stream";
+                status.innerText = "Forcing DASH Muxing...";
+                // CRITICAL FIX: We add 'application/dash+xml' to fix Error 1001
+                await player.load(proxiedUrl, null, 'application/dash+xml');
+                
+                status.innerText = "Playing!";
                 setTimeout(() => { status.style.display = 'none'; }, 5000);
             } catch (e) {
-                status.innerText = "Error: " + e.code + " - Jio is blocking the request.";
-                console.error("Error code", e.code, e);
+                status.innerText = "Error: " + e.code;
+                console.error("Load Error:", e);
+                
+                // Fallback: If Proxy fails, try direct (some networks allow it)
+                if (e.code == 1001 || e.code == 1002) {
+                    status.innerText = "Retrying direct connection...";
+                    try {
+                        await player.load(rawUrl, null, 'application/dash+xml');
+                        status.innerText = "Playing (Direct)!";
+                    } catch (err2) {
+                        status.innerText = "Final Error: " + err2.code;
+                    }
+                }
             }
         }
 
-        // Install polyfills and launch
         document.addEventListener('shaka-ui-loaded', () => {
             shaka.polyfill.installAll();
             initApp();
